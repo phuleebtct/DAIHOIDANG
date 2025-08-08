@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Sách điện tử 3D</title>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+  <!-- Turn.js -->
+  <script src="js/turn.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Georgia', serif;
+      background-image: url('background.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #introVideo {
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 10;
+      opacity: 1;
+      transition: opacity 2s ease;
+    }
+
+    #backgroundOverlay {
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+      background-image: url('background.jpg');
+      background-size: cover;
+      background-position: center;
+      z-index: 5;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    #flipbook-container {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      z-index: 6;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    #flipbook {
+      width: 900px;
+      height: 600px;
+      margin: auto;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .page {
+      background-image: url('book-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .page img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .page-number {
+      position: absolute;
+      bottom: 5px;
+      right: 10px;
+      font-size: 14px;
+      color: #333;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button, input[type="number"] {
+      font-size: 16px;
+      padding: 8px 12px;
+      border: 1px solid #aaa;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background-color: #ddd;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- VIDEO INTRO -->
+  <video id="introVideo" autoplay muted>
+    <source src="intro.mp4" type="video/mp4">
+    Trình duyệt của bạn không hỗ trợ video.
+  </video>
+
+  <!-- BACKGROUND OVERLAY -->
+  <div id="backgroundOverlay"></div>
+
+  <!-- FLIPBOOK -->
+  <div id="flipbook-container">
+    <div id="flipbook"></div>
+
+    <!-- Dòng trong khối <div class="controls"> -->
+<div class="controls">
+  <button onclick="$('#flipbook').turn('previous')">⬅️ Trang trước</button>
+  <button onclick="$('#flipbook').turn('next')">Trang sau ➡️</button>
+  <input type="number" id="pageInput" min="1" placeholder="Tìm trang">
+  <button onclick="goToPage()">Đi</button>
+  <button id="autoFlipBtn">Auto</button>
+  <button onclick="goToFirstPage()">Trang đầu</button>
+  <button onclick="goToLastPage()">Trang cuối</button> <!-- ✅ Thêm nút mới -->
+  <button onclick="launchFullscreen()">Toàn màn hình</button>
+</div>
+
+  <!-- ÂM THANH LẬT TRANG -->
+  <audio id="flipSound" preload="auto">
+    <source src="page-flip-sound-effect-384077.mp3" type="audio/mp3">
+  </audio>
+
+ <!-- phần head, style và video giữ nguyên như bạn đang dùng -->
+
+<script>
+  const introVideo = document.getElementById("introVideo");
+  const backgroundOverlay = document.getElementById("backgroundOverlay");
+  const flipbookContainer = document.getElementById("flipbook-container");
+  let autoFlip = false;
+  let autoFlipInterval;
+
+  // BẮT ĐẦU LẠI TỪ VIDEO
+  function restartIntro() {
+    // Stop auto
+    autoFlip = false;
+    clearInterval(autoFlipInterval);
+    document.getElementById("autoFlipBtn").innerText = "Auto";
+
+    // Hủy flipbook nếu đã khởi tạo
+    if ($('#flipbook').data('turn')) {
+      $('#flipbook').turn('destroy');
+    }
+
+    // Xóa hết nội dung flipbook
+    $('#flipbook').html('');
+
+    // Ẩn sách, nền và hiện lại video intro
+    flipbookContainer.style.opacity = 0;
+    backgroundOverlay.style.opacity = 0;
+
+    setTimeout(() => {
+      flipbookContainer.style.display = "none";
+      introVideo.style.display = "block";
+      introVideo.style.opacity = 1;
+      introVideo.currentTime = 0;
+      introVideo.play();
+    }, 1000);
+  }
+
+  // QUAY VỀ TRANG 1
+  function goToFirstPage() {
+    $('#flipbook').turn('page', 1);
+  }
+
+  // ĐI ĐẾN TRANG SỐ
+  function goToPage() {
+    const page = parseInt(document.getElementById("pageInput").value);
+    if (!isNaN(page)) {
+      $('#flipbook').turn('page', page);
+    }
+  }
+
+  // TOÀN MÀN HÌNH
+  function launchFullscreen() {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen();
+    }
+  }
+function goToLastPage() {
+  const totalPages = $('#flipbook').turn('pages');
+  $('#flipbook').turn('page', totalPages);
+}
+  // KHI VIDEO KẾT THÚC
+  introVideo.addEventListener("ended", () => {
+    introVideo.style.opacity = 0;
+    backgroundOverlay.style.opacity = 1;
+
+    setTimeout(() => {
+      introVideo.style.display = "none";
+      flipbookContainer.style.display = "flex";
+
+      setTimeout(() => {
+        flipbookContainer.style.opacity = 1;
+        setTimeout(() => {
+          initFlipbook(); // <-- gọi chính xác khi flipbook đã hiện
+        }, 500); // delay thêm 1 chút cho chắc
+      }, 300);
+    }, 1500);
+  });
+
+  // KHỞI TẠO FLIPBOOK
+  function initFlipbook() {
+    const flipSound = document.getElementById("flipSound");
+
+    // Gắn lại ảnh
+    for (let i = 1; i <= 50; i++) {
+      const page = $(`<div class="page"><img src="images/${i}.jpg"><div class='page-number'>${i}</div></div>`);
+      $('#flipbook').append(page);
+    }
+
+    // Khởi tạo turn.js
+    $('#flipbook').turn({
+      width: 900,
+      height: 600,
+      autoCenter: true,
+      display: 'double',
+      when: {
+        turning: function () {
+          flipSound.currentTime = 0;
+          flipSound.play();
+        }
+      }
+    });
+
+    // Gắn sự kiện auto lật
+    document.getElementById("autoFlipBtn").addEventListener("click", () => {
+      autoFlip = !autoFlip;
+      const totalPages = $('#flipbook').turn('pages');
+      if (autoFlip) {
+        document.getElementById("autoFlipBtn").innerText = "Tắt Auto";
+        autoFlipInterval = setInterval(() => {
+          const currentPage = $('#flipbook').turn('page');
+          if (currentPage >= totalPages) {
+            clearInterval(autoFlipInterval);
+            autoFlip = false;
+            document.getElementById("autoFlipBtn").innerText = "Auto";
+          } else {
+            $('#flipbook').turn('next');
+          }
+        }, 2500);
+      } else {
+        clearInterval(autoFlipInterval);
+        document.getElementById("autoFlipBtn").innerText = "Auto";
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
